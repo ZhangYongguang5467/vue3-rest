@@ -1,0 +1,34 @@
+steps:
+  # Build the Docker image for the Vue 3 application
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/${_CUSTOM_PROJECT_ID}/vue3-app', '.']
+
+  # Push the Docker image for the Vue 3 application to Google Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/${_CUSTOM_PROJECT_ID}/vue3-app']
+
+  # Deploy the Docker container on the Google Compute Engine instance
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'compute'
+      - 'ssh'
+      - '${_INSTANCE_NAME}'
+      - '--project=${_CUSTOM_PROJECT_ID}'
+      - '--zone=${_ZONE}'
+      - '--command'
+      - |
+        bash -c "
+        sudo docker pull gcr.io/${_CUSTOM_PROJECT_ID}/vue3-app &&
+        sudo docker stop vue3-app || true &&
+        sudo docker rm vue3-app || true &&
+        sudo docker run -d --name vue3-app -p 80:5000 gcr.io/${_CUSTOM_PROJECT_ID}/vue3-app
+        "
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+# Substitutions for the Cloud Build
+substitutions:
+  _CUSTOM_PROJECT_ID: 'bamboo-shift-418807'
+  _INSTANCE_NAME: 'web-api-instance1'
+  _ZONE: 'asia-northeast1-a'
